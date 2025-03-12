@@ -1,0 +1,7 @@
+/target
+*.wav
+*.csv
+.idea
+*.png
+*.jpg
+*.txt

@@ -1,0 +1,10 @@
+[package]
+name = "lab_3"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = "4.5.28"
+hound = "3.5.1"
+plotters = "0.3.7"
+bitvec = "1.0.1"
