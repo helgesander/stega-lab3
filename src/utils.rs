@@ -111,7 +111,23 @@ pub fn init_cli() -> Result<ArgMatches, Error> {
                 .long("key")
                 .short('k')
                 .action(ArgAction::Set)
-                .requires("decrypt"),
+                .requires("decrypt")
+        )
+        .arg(
+            Arg::new("bits-per-char")
+                .long("bits-per-char")
+                .short('b')
+                .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(usize))
+                .requires("decrypt")
+        )
+        .arg(
+            Arg::new("message-len")
+                .long("message-len")
+                .short('l')
+                .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(usize))
+                .requires("decrypt")
         )
         .try_get_matches();
     ret

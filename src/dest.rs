@@ -2,7 +2,7 @@ use bitvec::order::Msb0;
 use bitvec::prelude::BitVec;
 use crate::utils::DecryptData;
 
-pub fn dest(data: &DecryptData, n: usize, m: usize, samples_per_msg_bit: usize) -> Vec<u8> {
+pub fn dest(data: &DecryptData, samples_per_msg_bit: usize, n: usize, m: usize) -> Vec<u8> {
     let mut recovered_message_bitvec: BitVec<_, Msb0> = BitVec::new();
 
     for i in 0..n * m {
