@@ -1,10 +1,12 @@
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use clap::builder::Str;
 use crate::park_miller_prng::ParkMiller;
 use crate::st::st;
-use crate::utils::{init_cli, process_files, ProcessResult, generate_wav, print_debug_information, print_amplitudes, plot_wav_amplitudes, count_bits_per_char, write_key_to_file, save_amplitudes_to_wav, WavFile, compare_amplitudes, read_key_from_file};
+use crate::utils::{init_cli, process_files, 
+    ProcessResult, generate_wav, plot_wav_amplitudes, 
+    count_bits_per_char, write_key_to_file, 
+    save_amplitudes_to_wav, WavFile};
 use crate::dest::dest;
 
 
@@ -24,11 +26,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         match data {
             ProcessResult::Encrypt(data) => {
-                print_debug_information(format!("{:#?}", data));
                 let bits_per_char = count_bits_per_char(&*data.message)?;
 
                 let samples_per_msg_bit: usize = (data.container.samples_num as f64 / (bits_per_char * data.message.len()) as f64).floor() as usize;
-                print_debug_information(format!("N: {}", samples_per_msg_bit));
 
                 if samples_per_msg_bit == 0 {
                     return Err(Box::new(std::io::Error::new(
@@ -40,7 +40,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 let mut generator = ParkMiller::new();
                 let psp = generator.generate_prs(samples_per_msg_bit);
-                write_key_to_file(&psp, "key.csv")?;
+                let key_filename = matches.get_one::<String>("key").unwrap().clone();
+                write_key_to_file(&psp, key_filename.clone().as_str())?;
+
+                println!("___ДАННЫЕ ДЛЯ ДЕКОДИРОВАНИЯ___");
+                println!("n: {}\nm: {}\nN: {}", bits_per_char, data.message.len(), samples_per_msg_bit);
+                println!("Ключ для декодирования был сохранен в {}", key_filename);
+                println!("График исходного сигнала был сохранен в container.png");
+                
                 plot_wav_amplitudes(&data.container, "container.png")?;
                 let result_amplitudes = st(&data, samples_per_msg_bit, bits_per_char, data.message.len(), psp);
                 let new_wav = WavFile {
@@ -51,10 +58,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     sample_rate: data.container.sample_rate,
                     samples_num: data.container.samples_num,
                 };
-                // print_debug_information(format!("{:#?}", new_wav));
+
+                println!("График измененного сигнала сохранен в stegacontainer.png");
                 plot_wav_amplitudes(&new_wav, "stegacontainer.png")?;
                 save_amplitudes_to_wav(&new_wav)?;
-                compare_amplitudes(&data.container.amplitudes, &new_wav.amplitudes, 0.0001);
             }
             ProcessResult::Decrypt(data) => {
                 let bits_per_char = *matches.get_one::<usize>("bits-per-char").unwrap();

@@ -6,41 +6,17 @@ use clap::{Arg, ArgAction, ArgMatches, Command, Error, ArgGroup};
 use hound::{SampleFormat, WavReader, WavSpec, WavWriter};
 use plotters::prelude::*;
 
-#[cfg(debug_assertions)]
-pub fn print_amplitudes(data: &[f64], num: Option<usize>) {
-    let count = num.unwrap_or(10);
-    for i in 0..count {
-        println!("{:.4}", data[i]);
-    }
-}
-
-#[cfg(debug_assertions)]
-pub fn print_debug_information(msg: String) {
-    println!("{}", msg);
-}
-
-#[cfg(debug_assertions)]
-pub fn compare_amplitudes(original: &[f64], generated: &[f64], threshold: f64) {
-    let mut differences = Vec::new();
-
-    for (i, (orig_amp, gen_amp)) in original.iter().zip(generated.iter()).enumerate() {
-        if (orig_amp - gen_amp).abs() > threshold {
-            differences.push((i, *orig_amp, *gen_amp));
-        }
-    }
-
-    println!("Количество измененных амплитуд: {}", differences.len());
-}
-
 pub fn init_cli() -> Result<ArgMatches, Error> {
     let ret = Command::new("Steganography third lab")
         .arg(
             Arg::new("encrypt")
+                .help("Кодирование сообщения")
                 .long("encrypt")
                 .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new("decrypt")
+                .help("Декодирование сообщения")
                 .long("decrypt")
                 .action(ArgAction::SetTrue),
         )
@@ -52,12 +28,14 @@ pub fn init_cli() -> Result<ArgMatches, Error> {
         )
         .arg(
             Arg::new("generate-wav")
+                .help("Генерирование WAV-файла с указанными параметрами")
                 .long("generate-wav")
                 .short('g')
                 .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new("duration")
+                .help("Длина генерируемого WAV-файла")
                 .long("duration")
                 .short('d')
                 .action(ArgAction::Set)
@@ -65,19 +43,23 @@ pub fn init_cli() -> Result<ArgMatches, Error> {
         )
         .arg(
             Arg::new("channels")
+                .help("Количество каналов генерируемого WAV-файла (1 - моно, 2 - стерео)")
                 .long("channels")
                 .action(ArgAction::Set)
                 .value_parser(clap::value_parser!(u16)),
         )
         .arg(
             Arg::new("sample-rate")
+                .help("Частота дискретизации генерируемого WAV-файла")
                 .long("sample-rate")
                 .short('r')
                 .action(ArgAction::Set)
+                .default_value("44100")
                 .value_parser(clap::value_parser!(u32))
         )
         .arg(
             Arg::new("name")
+                .help("Имя генерируемого WAV-файла")
                 .long("name")
                 .short('n')
                 .action(ArgAction::Set)
@@ -90,20 +72,26 @@ pub fn init_cli() -> Result<ArgMatches, Error> {
         )
         .arg(
             Arg::new("container")
+                .help("Путь до контейнера WAV-формата")
                 .long("container")
                 .short('c')
+                .default_value("container.wav")
                 .action(ArgAction::Set),
         )
         .arg(
             Arg::new("stegacontainer")
+                .help("Путь до стегаконтейнера в WAV-формате")
                 .long("stegacontainer")
                 .short('s')
+                .default_value("stegacontainer.wav")
                 .action(ArgAction::Set),
         )
         .arg(
             Arg::new("message")
+                .help("Путь до файла с сообщением")
                 .long("message")
                 .short('m')
+                .default_value("message.txt")
                 .action(ArgAction::Set),
         )
         .arg(
@@ -111,10 +99,12 @@ pub fn init_cli() -> Result<ArgMatches, Error> {
                 .long("key")
                 .short('k')
                 .action(ArgAction::Set)
+                .default_value("key.csv")
                 .requires("decrypt")
         )
         .arg(
             Arg::new("bits-per-char")
+                .help("Количество бит на символ вытаскиваемого сообщения")
                 .long("bits-per-char")
                 .short('b')
                 .action(ArgAction::Set)
@@ -123,6 +113,7 @@ pub fn init_cli() -> Result<ArgMatches, Error> {
         )
         .arg(
             Arg::new("message-len")
+                .help("Длина вытаскиваемого сообщения")
                 .long("message-len")
                 .short('l')
                 .action(ArgAction::Set)
@@ -153,23 +144,24 @@ fn read_file(file: Result<File, io::Error>, buffer: &mut Vec<u8>) -> Result<(), 
 
 // Учитывается, что у нас в сообщении не смешиваются латиница и кириллица. (НЕ ФАКТ ЧТО РАБОТАЕТ)
 pub fn count_bits_per_char(bytes: &[u8]) -> Result<usize, Box<dyn std::error::Error>> {
-    let mut bits_per_char: usize = 0;
+    let mut max_bits_per_char: usize = 0;
     match std::str::from_utf8(bytes) {
         Ok(s) => {
             for c in s.chars() {
                 let bytes = c.len_utf8();
                 let bits = bytes * 8;
-                bits_per_char = bits;
-                print_debug_information(format!("Символ: {}, Байты: {}, Биты: {}", c, bytes, bits));
+                if bits > max_bits_per_char {
+                    max_bits_per_char = bits;
+                }
+                // print_debug_information(format!("Символ: {}, Байты: {}, Биты: {}", c, bytes, bits));
             }
         }
         Err(_) => {
             return Err(Box::from("Ошибка: массив байтов содержит невалидный UTF-8"))
         }
     }
-    Ok(bits_per_char)
+    Ok(max_bits_per_char)
 }
-
 pub fn process_files(matches: &ArgMatches) -> Result<ProcessResult, Box<dyn std::error::Error>> {
     if matches.get_flag("encrypt") {
         let wav_path = matches.get_one::<String>("container").unwrap();
@@ -186,7 +178,7 @@ pub fn process_files(matches: &ArgMatches) -> Result<ProcessResult, Box<dyn std:
         }))
     } else {
         let container_wav_path = matches.get_one::<String>("container").unwrap();
-        let stegocontainer_wav_path = matches.get_one::<String>("stegocontainer").unwrap();
+        let stegocontainer_wav_path = matches.get_one::<String>("stegacontainer").unwrap();
         let key_path = matches.get_one::<String>("key").unwrap();
         let container = get_wav_file_data(container_wav_path)?;
         let stegocontainer = get_wav_file_data(stegocontainer_wav_path)?;

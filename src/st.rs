@@ -1,5 +1,5 @@
 use bitvec::prelude::*;
-use crate::utils::{print_amplitudes, EncryptData};
+use crate::utils::EncryptData;
 
 
 pub fn st(data: &EncryptData, samples_per_msg_bit: usize, n: usize, m: usize, psp: Vec<i16>) -> Vec<f64> {
@@ -20,7 +20,7 @@ pub fn st(data: &EncryptData, samples_per_msg_bit: usize, n: usize, m: usize, ps
 
         for j in start..end {
             let original_amp = result_amplitudes[j];
-            println!("{} -> {}", data.container.amplitudes[j], original_amp + pspmes[j - start] * (original_amp + 2.0));
+            // println!("{} -> {}", data.container.amplitudes[j], original_amp + pspmes[j - start] * (original_amp + 2.0));
             result_amplitudes[j] = original_amp + pspmes[j - start] * (original_amp + 2.0);
         }
     }
