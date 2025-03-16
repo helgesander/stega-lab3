@@ -71,7 +71,7 @@ mod tests {
         let samples_per_msg_bit = 1;  // 1 сэмпл на бит
 
         // Вызов функции dest для извлечения сообщения
-        let recovered_message = dest(&data, n, m, samples_per_msg_bit);
+        let recovered_message = dest(&data, samples_per_msg_bit, n, m);
 
         // Ожидаемое сообщение (в битах)
         let expected_message = vec![0b10101010];  // Пример сообщения (1 байт)
@@ -113,7 +113,7 @@ mod tests {
         let samples_per_msg_bit = 1;  // 1 сэмпл на бит
 
         // Вызов функции dest для извлечения сообщения
-        let recovered_message = dest(&data, n, m, samples_per_msg_bit);
+        let recovered_message = dest(&data, samples_per_msg_bit, n, m);
 
         // Ожидаемое сообщение (пустое)
         let expected_message: Vec<u8> = vec![];
